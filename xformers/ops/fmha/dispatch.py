@@ -8,7 +8,7 @@ import textwrap
 from collections import deque
 from typing import List, Sequence, Type, TypeVar
 
-from . import attn_bias, cutlass, decoder, flash, small_k, triton, triton_splitk
+from . import attn_bias, cutlass, ck, decoder, flash, small_k, triton, triton_splitk
 from .common import AttentionBwOpBase, AttentionFwOpBase, Inputs
 
 
@@ -71,6 +71,7 @@ def _dispatch_fw_priority_list(
             flash.FwOp,
             triton.FwOp,
             cutlass.FwOp,
+            ck.FwOp,
             small_k.FwOp,
         ]
     )
@@ -135,6 +136,7 @@ def _dispatch_bw(inp: Inputs) -> Type[AttentionBwOpBase]:
         # CUDA illegal memory issues, race conditions etc..
         # triton.BwOp,
         # Deprecated
+        ck.FwOp,
         small_k.BwOp,
     ]
     if _is_cutlassB_faster_than_flash(inp):
