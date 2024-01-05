@@ -166,9 +166,9 @@ class FwOp(AttentionFwOpBase):
         if type(inp.attn_bias) not in FwOp.SUPPORTED_ATTN_BIAS_TYPES:
             raise NotImplementedError("Unsupported attn_bias type")
         seqstart_k, seqstart_q, max_seqlen_q = _get_seqlen_info(inp)
-        query = inp.query.reshape(1, inp.query.size(1)*inp.query.size(2),inp.query.size(3),inp.query.size(4))
-        key   = inp.key.reshape(1, inp.key.size(1)*inp.key.size(2)  ,inp.key.size(3)  ,inp.key.size(4))
-        value = inp.value.reshape(1, inp.value.size(1)*inp.value.size(2),inp.value.size(3),inp.value.size(4))
+        query = inp.query.reshape(1, inp.query.size(1),inp.query.size(2)*inp.query.size(3),inp.query.size(4))
+        key   = inp.key.reshape(1, inp.key.size(1),inp.key.size(2)*inp.key.size(3)  ,inp.key.size(4))
+        value = inp.value.reshape(1, inp.value.size(1),inp.value.size(2)*inp.value.size(3),inp.value.size(4))
         out, lse, rng_seed, rng_offset = cls.OPERATOR(
             query,
             key,
