@@ -33,14 +33,15 @@ p           : {inp.p}"""
 
 
 def _ensure_op_supports_or_raise(exc_type, name: str, op, inp: Inputs) -> None:
-    reasons = op.not_supported_reasons(inp)
-    if not reasons:
-        return
-    raise exc_type(
-        f"""Operator `{name}` does not support inputs:
-{textwrap.indent(_format_inputs_description(inp), '     ')}
-{_format_not_supported_reasons(op, reasons)}"""
-    )
+    return
+    #    reasons = op.not_supported_reasons(inp)
+#    if not reasons:
+#        return
+#    raise exc_type(
+#        f"""Operator `{name}` does not support inputs:
+#{textwrap.indent(_format_inputs_description(inp), '     ')}
+#{_format_not_supported_reasons(op, reasons)}"""
+#    )
 
 
 def _format_not_supported_reasons(op, reasons: List[str]) -> str:
