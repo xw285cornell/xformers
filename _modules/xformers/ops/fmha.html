@@ -237,14 +237,16 @@
     <span class="n">decoder</span><span class="p">,</span>
     <span class="n">flash</span><span class="p">,</span>
     <span class="n">small_k</span><span class="p">,</span>
-    <span class="n">triton</span><span class="p">,</span>
     <span class="n">triton_splitk</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span> <span class="nn">.attn_bias</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">AttentionBias</span><span class="p">,</span>
-    <span class="n">BlockDiagonalCausalWithOffsetPaddedKeysMask</span><span class="p">,</span>
+    <span class="n">BlockDiagonalGappyKeysMask</span><span class="p">,</span>
     <span class="n">BlockDiagonalMask</span><span class="p">,</span>
+    <span class="n">BlockDiagonalPaddedKeysMask</span><span class="p">,</span>
+    <span class="n">LowerTriangularFromBottomRightMask</span><span class="p">,</span>
     <span class="n">LowerTriangularMask</span><span class="p">,</span>
+    <span class="n">PagedBlockDiagonalPaddedKeysMask</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span> <span class="nn">.common</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">AttentionBwOpBase</span><span class="p">,</span>
@@ -262,10 +264,8 @@
 <span class="n">MemoryEfficientAttentionCutlassOp</span> <span class="o">=</span> <span class="p">(</span><span class="n">cutlass</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span> <span class="n">cutlass</span><span class="o">.</span><span class="n">BwOp</span><span class="p">)</span>
 <span class="n">MemoryEfficientAttentionCutlassFwdFlashBwOp</span> <span class="o">=</span> <span class="p">(</span><span class="n">cutlass</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span> <span class="n">flash</span><span class="o">.</span><span class="n">BwOp</span><span class="p">)</span>
 <span class="n">MemoryEfficientAttentionDecoderOp</span> <span class="o">=</span> <span class="p">(</span><span class="n">decoder</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span> <span class="n">cutlass</span><span class="o">.</span><span class="n">BwOp</span><span class="p">)</span>
-<span class="n">MemoryEfficientAttentionTritonFwdFlashBwOp</span> <span class="o">=</span> <span class="p">(</span><span class="n">triton</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span> <span class="n">flash</span><span class="o">.</span><span class="n">BwOp</span><span class="p">)</span>
 <span class="n">MemoryEfficientAttentionFlashAttentionOp</span> <span class="o">=</span> <span class="p">(</span><span class="n">flash</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span> <span class="n">flash</span><span class="o">.</span><span class="n">BwOp</span><span class="p">)</span>
 <span class="n">MemoryEfficientAttentionOp</span> <span class="o">=</span> <span class="p">(</span><span class="n">small_k</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span> <span class="n">small_k</span><span class="o">.</span><span class="n">BwOp</span><span class="p">)</span>
-<span class="n">TritonFlashAttentionOp</span> <span class="o">=</span> <span class="p">(</span><span class="n">triton</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span> <span class="n">cutlass</span><span class="o">.</span><span class="n">BwOp</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">cuda</span> <span class="k">else</span> <span class="n">ck</span><span class="o">.</span><span class="n">BwOp</span><span class="p">)</span>
 <span class="n">MemoryEfficientAttentionCkOp</span> <span class="o">=</span> <span class="p">(</span><span class="n">ck</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span> <span class="n">ck</span><span class="o">.</span><span class="n">BwOp</span><span class="p">)</span>
 <span class="n">MemoryEfficientAttentionCkDecoderOp</span> <span class="o">=</span> <span class="p">(</span><span class="n">ck_decoder</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span> <span class="n">ck</span><span class="o">.</span><span class="n">BwOp</span><span class="p">)</span>
 <span class="n">MemoryEfficientAttentionSplitKCkOp</span> <span class="o">=</span> <span class="p">(</span><span class="n">ck_splitk</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span> <span class="n">ck</span><span class="o">.</span><span class="n">BwOp</span><span class="p">)</span>
@@ -699,10 +699,18 @@
     <span class="k">if</span> <span class="n">p</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;dropout is not supported.&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
-        <span class="n">attn_bias</span><span class="p">,</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="n">BlockDiagonalCausalWithOffsetPaddedKeysMask</span><span class="p">)</span>
+        <span class="n">attn_bias</span><span class="p">,</span>
+        <span class="p">(</span>
+            <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
+            <span class="n">BlockDiagonalGappyKeysMask</span><span class="p">,</span>
+            <span class="n">BlockDiagonalPaddedKeysMask</span><span class="p">,</span>
+            <span class="n">PagedBlockDiagonalPaddedKeysMask</span><span class="p">,</span>
+            <span class="n">LowerTriangularFromBottomRightMask</span><span class="p">,</span>
+            <span class="n">LowerTriangularMask</span><span class="p">,</span>
+        <span class="p">),</span>
     <span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;only BlockDiagonalCausalWithOffsetPaddedKeysMask and no bias supported&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">attn_bias</span><span class="p">)</span><span class="si">}</span><span class="s2"> is not supported in memory_efficient_attention_partial.&quot;</span>
         <span class="p">)</span>
     <span class="n">out</span><span class="p">,</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">_memory_efficient_attention_forward_requires_grad</span><span class="p">(</span>
         <span class="n">Inputs</span><span class="p">(</span>
@@ -761,8 +769,8 @@
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">B</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">B1</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">G</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">G1</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">H</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">H1</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">split_k</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">split_k1</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">M</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">M</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="p">)</span>
 
-    <span class="n">attn_split</span> <span class="o">=</span> <span class="n">attn_split</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">G</span> <span class="o">*</span> <span class="n">H</span><span class="p">,</span> <span class="n">split_k</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">Kq</span><span class="p">)</span>
-    <span class="n">lse_split</span> <span class="o">=</span> <span class="n">lse_split</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">G</span> <span class="o">*</span> <span class="n">H</span><span class="p">,</span> <span class="n">split_k</span><span class="p">,</span> <span class="n">M</span><span class="p">)</span>
+    <span class="n">attn_split</span> <span class="o">=</span> <span class="n">attn_split</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="n">lse_split</span> <span class="o">=</span> <span class="n">lse_split</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
 
     <span class="n">attn_out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span>
         <span class="n">B</span><span class="p">,</span>
@@ -775,16 +783,12 @@
     <span class="p">)</span>
     <span class="k">if</span> <span class="n">write_lse</span><span class="p">:</span>
         <span class="n">lse_out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span>
-            <span class="n">B</span> <span class="o">*</span> <span class="n">H</span> <span class="o">*</span> <span class="n">G</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">attn_split</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">lse_split</span><span class="o">.</span><span class="n">dtype</span>
+            <span class="n">B</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">attn_split</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">lse_split</span><span class="o">.</span><span class="n">dtype</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">lse_out</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="n">triton_splitk</span><span class="o">.</span><span class="n">merge_attentions</span><span class="p">(</span>
-        <span class="n">attn_out</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">lse_out</span><span class="p">,</span> <span class="n">attn_split</span><span class="p">,</span> <span class="n">lse_split</span>
-    <span class="p">)</span>
-    <span class="k">if</span> <span class="n">lse_out</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">lse_out</span> <span class="o">=</span> <span class="n">lse_out</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">M</span><span class="p">)</span>
+    <span class="n">triton_splitk</span><span class="o">.</span><span class="n">merge_attentions</span><span class="p">(</span><span class="n">attn_out</span><span class="p">,</span> <span class="n">lse_out</span><span class="p">,</span> <span class="n">attn_split</span><span class="p">,</span> <span class="n">lse_split</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">is_bmhk</span><span class="p">:</span>
         <span class="n">attn_out</span> <span class="o">=</span> <span class="n">attn_out</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span>
@@ -797,7 +801,6 @@
 <span class="n">ALL_FW_OPS</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">AttentionFwOpBase</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span>
     <span class="n">cutlass</span><span class="o">.</span><span class="n">FwOp</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">cuda</span> <span class="k">else</span> <span class="n">ck</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span>
     <span class="n">flash</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span>
-    <span class="n">triton</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span>
     <span class="n">small_k</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span>
     <span class="n">triton_splitk</span><span class="o">.</span><span class="n">FwOp</span><span class="p">,</span>
 <span class="p">]</span>
@@ -815,11 +818,9 @@
     <span class="s2">&quot;AttentionOpDispatch&quot;</span><span class="p">,</span>
     <span class="s2">&quot;LowerTriangularMask&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MemoryEfficientAttentionCutlassFwdFlashBwOp&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;MemoryEfficientAttentionTritonFwdFlashBwOp&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MemoryEfficientAttentionCutlassOp&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MemoryEfficientAttentionFlashAttentionOp&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MemoryEfficientAttentionOp&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;TritonFlashAttentionOp&quot;</span><span class="p">,</span>
     <span class="s2">&quot;memory_efficient_attention&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MemoryEfficientAttentionCkOp&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MemoryEfficientAttentionCkDecoderOp&quot;</span><span class="p">,</span>
