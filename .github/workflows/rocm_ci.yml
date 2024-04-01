@@ -19,8 +19,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        submodules: true
-        set-safe-directory: 'third_party/composable_kernel_tiled'
+        path: '_xformers'
+        submodules: 'recursive'
+        set-safe-directory: true
         fetch-depth: 0
     - name: Get CPU info on Ubuntu
       if: contains(runner.os, 'linux')
