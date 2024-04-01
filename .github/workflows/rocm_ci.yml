@@ -58,7 +58,7 @@ jobs:
       run: |
         pip3 install --upgrade pip
         pip3 uninstall -y xformers
-        MAX_JOBS=$MAX_JOBS pip3 install -e ./xformers --verbose
+        MAX_JOBS=$MAX_JOBS pip3 install -e ./_xformers --verbose
         pip3 install scipy==1.10
 
         python3 -c "import torch; print(torch.__version__)"
@@ -66,7 +66,7 @@ jobs:
 
     - name: Run python tests
       run: |
-        pytest -rpfs ./xformers/tests/test_mem_eff_attention.py | tee test_mem_eff_attention.log
+        pytest -rpfs ./_xformers/tests/test_mem_eff_attention.py | tee test_mem_eff_attention.log
     
     - name: Archive logs
       uses: actions/upload-artifact@v3
