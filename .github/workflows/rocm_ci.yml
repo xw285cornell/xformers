@@ -21,6 +21,7 @@ jobs:
       with:
         submodules: true
         set-safe-directory: 'third_party/composable_kernel_tiled'
+        fetch-depth: 0
     - name: Get CPU info on Ubuntu
       if: contains(runner.os, 'linux')
       run: |
