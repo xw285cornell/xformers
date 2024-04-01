@@ -54,6 +54,8 @@ jobs:
         rocm-smi
         rocminfo | grep "gfx"
 
+        python3 -VV
+
     - name: Build XFormers
       run: |
         pip3 install --upgrade pip
@@ -61,7 +63,7 @@ jobs:
         MAX_JOBS=$MAX_JOBS pip3 install -e ./_xformers --verbose
         pip3 install scipy==1.10
 
-        python3 -c "import torch; print(torch.__version__)"
+        python3 -c "import torch; print(f'PyTorch version {torch.__version__}')"
         python3 -m xformers.info
 
     - name: Run python tests
@@ -72,7 +74,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: test results
-        path: test_mem_eff_attention_ck.log
+        path: test_mem_eff_attention.log
 
     - name: Process test results
       run: |
