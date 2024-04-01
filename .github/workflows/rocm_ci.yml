@@ -13,7 +13,9 @@ on:
 jobs:
   build:
     runs-on: self-hosted
-
+    container:
+      image: 'rocm/pytorch-nightly:latest'
+      options: ' --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --device=/dev/kfd --device=/dev/dri --group-add video --ipc=host --shm-size 8G '
     steps:
     - uses: actions/checkout@v4
       with:
@@ -51,11 +53,9 @@ jobs:
 
     - name: Build XFormers
       run: |
-        docker run -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --device=/dev/kfd --device=/dev/dri --group-add video --ipc=host --shm-size 8G -v "$PWD/xformers":/xformers  rocm/pytorch-nightly:latest
-
         pip3 install --upgrade pip
         pip3 uninstall -y xformers
-        MAX_JOBS=$MAX_JOBS pip3 install -e /xformers --verbose
+        MAX_JOBS=$MAX_JOBS pip3 install -e ./xformers --verbose
         pip3 install scipy==1.10
 
         python3 -c "import torch; print(torch.__version__)"
@@ -63,7 +63,7 @@ jobs:
 
     - name: Run python tests
       run: |
-        pytest -rpfs /xformers/tests/test_mem_eff_attention.py | tee test_mem_eff_attention.log
+        pytest -rpfs ./xformers/tests/test_mem_eff_attention.py | tee test_mem_eff_attention.log
     
     - name: Archive logs
       uses: actions/upload-artifact@v3
