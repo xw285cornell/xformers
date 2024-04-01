@@ -47,10 +47,13 @@ jobs:
         rocm-smi
         rocminfo | grep "gfx"
 
+        export XFORMERS_PATH="$(mktemp -d)"
+        echo XFORMERS_PATH     = $XFORMERS_PATH
+
     - name: Build XFormers
       run: |
-        git clone --recursive -b "$GIT_BRANCH" "https://github.com/$GITHUB_REPOSITORY"
-        docker run -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --device=/dev/kfd --device=/dev/dri --group-add video --ipc=host --shm-size 8G -v $PWD/xformers:/xformers  rocm/pytorch-nightly:latest
+        git clone --recursive -b "$GIT_BRANCH" "https://github.com/$GITHUB_REPOSITORY" $XFORMERS_PATH
+        docker run -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --device=/dev/kfd --device=/dev/dri --group-add video --ipc=host --shm-size 8G -v $XFORMERS_PATH:/xformers  rocm/pytorch-nightly:latest
 
         pip3 install --upgrade pip
         pip3 uninstall -y xformers
