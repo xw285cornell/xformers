@@ -3,11 +3,11 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Any, List, Optional, Set, Tuple
+from typing import Any, Iterable, List, Optional, Set, Tuple
 
 import torch
 
-from ..common import get_xformers_operator, register_operator
+from ..common import get_operator, register_operator
 from .attn_bias import BlockDiagonalCausalWithOffsetPaddedKeysMask
 from .common import AttentionFwOpBase, Context, Inputs
 
@@ -19,14 +19,14 @@ class FwOp(AttentionFwOpBase):
     Tested to work on MI250x.
     """
 
-    OPERATOR = get_xformers_operator("efficient_attention_forward_decoder_ck")
+    OPERATOR = get_operator("xformers", "efficient_attention_forward_decoder_ck")
     SUPPORTED_DEVICES: Set[str] = {"cuda"}
     SUPPORTED_DTYPES: Set[torch.dtype] = {torch.half, torch.bfloat16, torch.float}
     SUPPORTED_MAX_K: int = 256
-    SUPPORTED_ATTN_BIAS_TYPES: Set[Any] = {
+    SUPPORTED_ATTN_BIAS_TYPES: Iterable[Any] = (
         type(None),
         BlockDiagonalCausalWithOffsetPaddedKeysMask,
-    }
+    )
     SUPPORTS_DROPOUT = False
     SUPPORTS_CUSTOM_SCALE = True
     SUPPORTS_BMGHK = True

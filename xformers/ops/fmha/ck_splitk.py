@@ -3,11 +3,11 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Any, List, Optional, Set, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 import torch
 
-from xformers.ops.common import get_xformers_operator, register_operator
+from xformers.ops.common import get_operator, register_operator
 from xformers.ops.fmha.attn_bias import BlockDiagonalCausalWithOffsetPaddedKeysMask
 from xformers.ops.fmha.common import (
     AttentionFwOpBase,
@@ -20,7 +20,7 @@ from xformers.ops.fmha.common import (
 @register_operator
 class FwOp(AttentionFwOpBase):
 
-    OPERATOR = get_xformers_operator("efficient_attention_forward_decoder_splitk_ck")
+    OPERATOR = get_operator("xformers", "efficient_attention_forward_decoder_splitk_ck")
     SUPPORTED_DEVICES = {"cuda"}
     SUPPORTED_DTYPES = {
         torch.half,
@@ -28,10 +28,10 @@ class FwOp(AttentionFwOpBase):
         torch.float,
     }  # Those are dtypes of Q. In the quantized case K/V has dtype int32
     SUPPORTED_MAX_K = 256
-    SUPPORTED_ATTN_BIAS_TYPES: Set[Any] = {
+    SUPPORTED_ATTN_BIAS_TYPES: Iterable[Any] = (
         type(None),
         BlockDiagonalCausalWithOffsetPaddedKeysMask,
-    }
+    )
     SUPPORTS_DROPOUT = False
     SUPPORTS_CUSTOM_SCALE = True
     SUPPORTS_BMGHK = True
